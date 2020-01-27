@@ -2,12 +2,64 @@
 
 import sys
 
+# Binary for all operations
+ADD = 0b10100000
+AND = 0b10101000
+CALL = 0b01010000
+CMP = 0b10100111
+DEC = 0b01100110
+DIV = 0b10100011
+HLT = 0b00000001
+INC = 0b01100101
+INT = 0b01010010
+IRET = 0b00010011
+JEQ = 0b01010101
+JGE = 0b01011010
+JGT = 0b01010111
+JLE = 0b01011001
+JLT = 0b01011000
+JMP = 0b01010100
+JNE = 0b01010110
+LD = 0b10000011
+LDI = 0b10000010
+MOD = 0b10100100
+MUL = 0b10100010
+NOP = 0b00000000
+NOT = 0b01101001
+OR = 0b10101010
+POP = 0b01000110
+PRA = 0b01001000
+PRN = 0b01000111
+PUSH = 0b01000101
+RET = 0b00010001
+SHL = 0b10101100
+SHR = 0b10101101
+ST = 0b10000100
+SUB = 0b10100001
+XOR = 0b10101011
+
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        # General purpose registers
+        self.register = [0] * 8
+        # 256 bit ram
+        self.ram = [0] * 256
+        # Program Counter
+        self.pc = 0
+        # Flags
+        self.fl = 0
+        # Instruction Table
+        self.i_table = {
+            HLT: self.handle_hlt,
+            LDI: self.handle_ldi,
+            PRN: self.handle_prn
+        }
+        # Keep track of if the CPU is running for the halt function
+        self.halted = False
 
     def load(self):
         """Load a program into memory."""
@@ -59,6 +111,33 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+
+    def ram_read(self, mar):
+        """Read the ram at a given position"""
+        return self.ram[mar]
+
+    def ram_write(self, mdr, mar):
+        """Write over the ram at a given position"""
+        self.ram[mar] = mdr
+
+    def handle_hlt(self):
+        """Handle instruction to halt the current set of instructions"""
+        print("CPU halted.")
+        self.halted = True
+
+    def handle_ldi(self):
+        """Handle instruction to load the register with an 8-bit immediate value"""
+        reg_num = self.ram_read(self.pc + 1)
+
+        value = self.ram_read(self.pc + 2)
+
+        self.register[reg_num] = value
+
+    def handle_prn(self):
+        """Handle intruction to print the value of the current register"""
+        reg_num = self.ram_read(self.pc + 1)
+
+        print(self.register[reg_num])
 
     def run(self):
         """Run the CPU."""
