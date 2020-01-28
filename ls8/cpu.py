@@ -61,14 +61,21 @@ class CPU:
         """Load a program into memory."""
         address = 0
         # Read the examples and load the instructions into the ram
+        # Automatically adds examples/ to the filename in this instance
+        # to make it easier, however hardcoding it would not always be
+        # the best option.
         with open('examples/' + file_to_run, 'r') as f:
+            # For each command...
             for line in f:
                 # Ignore comments
                 if line.startswith('#') or line.startswith('\n'):
                     continue
                 else:
+                    # Grab the command out of the file
                     command = line.split(' ')[0]
+                    # Convert binary command string to int value and load it into the ram
                     self.ram[address] = int(command, 2)
+                    # increment the register address for the next command
                     address += 1
 
 
@@ -77,7 +84,14 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
+        elif op == "MOD":
+            self.reg[reg_a] %= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -89,7 +103,7 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
+            self.fl,
             #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
@@ -142,6 +156,9 @@ class CPU:
                 self.handle_ldi(operand_a, operand_b)
             elif ir == PRN:
                 self.handle_prn(operand_a)
+            elif ir == MUL:
+                self.alu("MUL", operand_a, operand_b)
+                self.pc += 3
             else:
                 print("Instruction not found, exiting program with error")
                 sys.exit(1)
