@@ -45,42 +45,31 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         # General purpose registers
-        self.register = [0] * 8
+        self.reg = [0] * 8
+        # Set the reg at index 7 to the keystroke instruction
+        self.reg[7] = 0xFF
         # 256 bit ram
         self.ram = [0] * 256
         # Program Counter
         self.pc = 0
         # Flags
         self.fl = 0
-        # Instruction Table
-        self.i_table = {
-            HLT: self.handle_hlt,
-            LDI: self.handle_ldi,
-            PRN: self.handle_prn
-        }
         # Keep track of if the CPU is running for the halt function
-        self.halted = False
+        self.running = False
 
-    def load(self):
+    def load(self, file_to_run):
         """Load a program into memory."""
-
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # Read the examples and load the instructions into the ram
+        with open('examples/' + file_to_run, 'r') as f:
+            for line in f:
+                # Ignore comments
+                if line.startswith('#') or line.startswith('\n'):
+                    continue
+                else:
+                    command = line.split(' ')[0]
+                    self.ram[address] = int(command, 2)
+                    address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -123,22 +112,37 @@ class CPU:
     def handle_hlt(self):
         """Handle instruction to halt the current set of instructions"""
         print("CPU halted.")
-        self.halted = True
+        self.running = False
+        self.pc += 1
 
-    def handle_ldi(self):
-        """Handle instruction to load the register with an 8-bit immediate value"""
-        reg_num = self.ram_read(self.pc + 1)
+    def handle_ldi(self, reg_num, imm_int):
+        """Handle instruction to load the reg with an 8-bit immediate value"""
+        self.reg[reg_num] = imm_int
+        self.pc += 3
 
-        value = self.ram_read(self.pc + 2)
-
-        self.register[reg_num] = value
-
-    def handle_prn(self):
-        """Handle intruction to print the value of the current register"""
-        reg_num = self.ram_read(self.pc + 1)
-
-        print(self.register[reg_num])
+    def handle_prn(self, reg_num):
+        """Handle intruction to print the value of the current reg"""
+        print(self.reg[reg_num])
+        self.pc += 2
 
     def run(self):
         """Run the CPU."""
-        pass
+        self.running = True
+        # While not halted
+        while self.running == True:
+            # get the Instruction Register
+            ir = self.ram_read(self.pc)
+            # store the operands
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+            # dispatch the proper method based on the instruction
+            if ir == HLT:
+                self.handle_hlt()
+            elif ir == LDI:
+                self.handle_ldi(operand_a, operand_b)
+            elif ir == PRN:
+                self.handle_prn(operand_a)
+            else:
+                print("Instruction not found, exiting program with error")
+                sys.exit(1)
+
