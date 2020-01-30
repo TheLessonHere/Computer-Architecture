@@ -64,7 +64,10 @@ class CPU:
             LDI: self.handle_ldi,
             POP: self.handle_pop,
             PUSH: self.handle_push,
-            MUL: self.handle_mul
+            MUL: self.handle_mul,
+            CALL: self.handle_call,
+            RET: self.handle_ret,
+            ADD: self.handle_add
         }
 
     def load(self, file_to_run):
@@ -136,20 +139,17 @@ class CPU:
         """Handle instruction to halt the current set of instructions"""
         print("CPU halted.")
         self.running = False
-        self.pc += 1
 
     def handle_ldi(self):
         """Handle instruction to load the reg with an 8-bit immediate value"""
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
         self.reg[operand_a] = operand_b
-        self.pc += 3
 
     def handle_prn(self):
         """Handle intruction to print the value of the current reg"""
         operand_a = self.ram_read(self.pc + 1)
         print(self.reg[operand_a])
-        self.pc += 2
 
     def handle_push(self):
         operand_a = self.ram_read(self.pc + 1)
@@ -159,8 +159,6 @@ class CPU:
         value = self.reg[operand_a]
         # Set the ram at the registered index to the value
         self.ram[self.reg[SP]] = value
-        # Increment the pc forward
-        self.pc += 2
 
     def handle_pop(self):
         operand_a = self.ram_read(self.pc + 1)
@@ -170,14 +168,37 @@ class CPU:
         self.reg[operand_a] = value
         # Increment the stack pointer
         self.reg[SP] += 1
-        # Increment the pc forward
-        self.pc += 2
 
     def handle_mul(self):
+        # Declare the operands
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
+        # Run the ALU method to multiply them
         self.alu("MUL", operand_a, operand_b)
-        self.pc += 3
+
+    def handle_add(self):
+        # Declare the operands
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        # Run the ALU method to add them
+        self.alu("ADD", operand_a, operand_b)
+
+    def handle_call(self):
+        operand_a = self.ram_read(self.pc + 1)
+        # Store the return address
+        address = self.pc + 2
+        # Decrement the stack pointer
+        self.reg[SP] -= 1
+        # Put the return address on the stack
+        self.ram[self.reg[SP]] = address
+        # Set the pc equal to the register where the call was made
+        self.pc = self.reg[operand_a]
+
+    def handle_ret(self):
+        # Pop the return address off the stack and put it in the pc
+        self.pc = self.ram[self.reg[SP]]
+        # Move the stack pointer back where it was after the address is popped off
+        self.reg[SP] += 1
 
     def run(self):
         """Run the CPU."""
@@ -186,11 +207,18 @@ class CPU:
         while self.running == True:
             # get the Instruction Register
             ir = self.ram_read(self.pc)
+            # get the number of ops in case we need to increment the pc
+            ops = (ir >> 6) + 1
             # dispatch the proper method based on the instruction
             try:
-                run_function = self.branchtable[ir]
+                command_method = self.branchtable[ir]
             except:
                 print("Instruction not found, exiting program with error")
                 sys.exit(1)
-            run_function()
+            # Call the method
+            command_method()
+            # If the handler doesn't set the pc directly, increment the pc by the num of ops
+            set_directly = [CALL, INT, IRET, JMP, JNE, JEQ, JGT, JGE, JLT, JLE, RET]
+            if ir not in set_directly:
+                self.pc += ops
 
