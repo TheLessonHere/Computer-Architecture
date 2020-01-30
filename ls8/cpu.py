@@ -58,6 +58,14 @@ class CPU:
         self.reg[SP] = 0xF4
         # Keep track of if the CPU is running for the halt function
         self.running = False
+        self.branchtable = {
+            HLT: self.handle_hlt,
+            PRN: self.handle_prn,
+            LDI: self.handle_ldi,
+            POP: self.handle_pop,
+            PUSH: self.handle_push,
+            MUL: self.handle_mul
+        }
 
     def load(self, file_to_run):
         """Load a program into memory."""
@@ -130,35 +138,46 @@ class CPU:
         self.running = False
         self.pc += 1
 
-    def handle_ldi(self, reg_num, imm_int):
+    def handle_ldi(self):
         """Handle instruction to load the reg with an 8-bit immediate value"""
-        self.reg[reg_num] = imm_int
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.reg[operand_a] = operand_b
         self.pc += 3
 
-    def handle_prn(self, reg_num):
+    def handle_prn(self):
         """Handle intruction to print the value of the current reg"""
-        print(self.reg[reg_num])
+        operand_a = self.ram_read(self.pc + 1)
+        print(self.reg[operand_a])
         self.pc += 2
 
-    def handle_push(self, reg_num):
+    def handle_push(self):
+        operand_a = self.ram_read(self.pc + 1)
         # Decrement the stack pointer
         self.reg[SP] -= 1
         # Geth the value to be pushed
-        value = self.reg[reg_num]
+        value = self.reg[operand_a]
         # Set the ram at the registered index to the value
         self.ram[self.reg[SP]] = value
         # Increment the pc forward
         self.pc += 2
 
-    def handle_pop(self, reg_num):
+    def handle_pop(self):
+        operand_a = self.ram_read(self.pc + 1)
         # Store the value at the top of the stack
         value = self.ram[self.reg[SP]]
         # Set the reg at the correct index equal to the popped value
-        self.reg[reg_num] = value
+        self.reg[operand_a] = value
         # Increment the stack pointer
         self.reg[SP] += 1
         # Increment the pc forward
         self.pc += 2
+
+    def handle_mul(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.alu("MUL", operand_a, operand_b)
+        self.pc += 3
 
     def run(self):
         """Run the CPU."""
@@ -167,24 +186,12 @@ class CPU:
         while self.running == True:
             # get the Instruction Register
             ir = self.ram_read(self.pc)
-            # store the operands
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
             # dispatch the proper method based on the instruction
-            if ir == HLT:
-                self.handle_hlt()
-            elif ir == LDI:
-                self.handle_ldi(operand_a, operand_b)
-            elif ir == PRN:
-                self.handle_prn(operand_a)
-            elif ir == MUL:
-                self.alu("MUL", operand_a, operand_b)
-                self.pc += 3
-            elif ir == PUSH:
-                self.handle_push(operand_a)
-            elif ir == POP:
-                self.handle_pop(operand_a)
-            else:
+            try:
+                run_function = self.branchtable[ir]
+            except:
                 print("Instruction not found, exiting program with error")
                 sys.exit(1)
+            if callable(run_function):
+                run_function()
 
