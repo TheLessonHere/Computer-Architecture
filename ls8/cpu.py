@@ -192,6 +192,5 @@ class CPU:
             except:
                 print("Instruction not found, exiting program with error")
                 sys.exit(1)
-            if callable(run_function):
-                run_function()
+            run_function()
 
